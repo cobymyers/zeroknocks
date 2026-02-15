@@ -140,6 +140,7 @@
       flex-direction: column;
       align-items: center;
       min-width: 0;
+      position: relative;
     }
 
     .side input {
@@ -162,30 +163,104 @@
       border-bottom-color: var(--accent);
     }
 
-    /* ── Unit label ── */
+    /* ── Unit button ── */
 
-    .unit {
+    .unit-btn {
+      background: none;
+      border: none;
+      border-bottom: 1px dashed var(--text-3);
       font-family: var(--sans);
       font-size: 0.7rem;
       font-weight: 400;
       color: var(--text-2);
       margin-top: 0.25rem;
-      user-select: none;
-    }
-
-    /* Cyclable unit (data converter) — click to cycle B/KB/MB/GB */
-    .unit.cyclable {
+      padding: 0 2px 2px;
       cursor: pointer;
-      border-bottom: 1px dashed var(--text-3);
-      padding-bottom: 2px;
+      user-select: none;
+      line-height: 1;
       transition: color 0.15s ease, border-color 0.15s ease;
     }
 
-    .unit.cyclable:hover,
-    .unit.cyclable:focus-visible {
+    .unit-btn:hover,
+    .unit-btn:focus-visible {
       color: var(--text-1);
       border-bottom-color: var(--accent);
+      outline: none;
     }
+
+    /* ── Unit dropdown ── */
+
+    .unit-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 150px;
+      max-height: 240px;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      z-index: 100;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      padding: 4px 0;
+      animation: dropdown-in 0.12s ease;
+    }
+
+    .unit-dropdown.above {
+      top: auto;
+      bottom: calc(100% + 4px);
+    }
+
+    @keyframes dropdown-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .unit-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: var(--text-2);
+      white-space: nowrap;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .unit-option:hover,
+    .unit-option:focus {
+      background: var(--surface-hover);
+      color: var(--text-1);
+      outline: none;
+    }
+
+    .unit-option[aria-selected="true"] {
+      color: var(--accent);
+    }
+
+    .unit-option .symbol {
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 0.7rem;
+      min-width: 36px;
+    }
+
+    .unit-option .name {
+      font-family: var(--sans);
+      color: var(--text-3);
+      font-size: 0.65rem;
+    }
+
+    .unit-option:hover .name,
+    .unit-option:focus .name {
+      color: var(--text-2);
+    }
+
+    .unit-dropdown::-webkit-scrollbar { width: 4px; }
+    .unit-dropdown::-webkit-scrollbar-track { background: transparent; }
+    .unit-dropdown::-webkit-scrollbar-thumb { background: var(--text-3); border-radius: 2px; }
 
     /* ── Midpoint separator (⇄) ── */
 
@@ -218,7 +293,7 @@
     @media (max-width: 1279px) {
       .side input { font-size: 1.15rem; }
       .tile { padding: 0.75rem 0.4rem; }
-      .unit { font-size: 0.6rem; }
+      .unit-btn { font-size: 0.6rem; }
       .pair { gap: 0.25rem; }
     }
 
@@ -233,8 +308,9 @@
         min-height: 150px;
       }
       .side input { font-size: 1.4rem; }
-      .unit { font-size: 0.7rem; }
+      .unit-btn { font-size: 0.7rem; }
       .pair { gap: 0.5rem; }
+      .unit-option { min-height: 44px; padding: 10px 12px; }
     }
 
     @media (max-width: 767px) {
@@ -263,27 +339,133 @@
 
   <script>
     /* ══════════════════════════════════════════════════
-     *  CONVERTER DEFINITIONS
-     *  Each: id, label, left [unit, default value],
-     *  right [unit], toR (left→right), toL (right→left)
+     *  CATEGORY & UNIT DEFINITIONS
+     *  Base-unit system: source → base → target
      * ══════════════════════════════════════════════════ */
 
-    const converters = [
-      { id: 'length',   label: 'Length',      l: ['m',    1],   r: ['ft'  ], toR: v => v * 3.28084,      toL: v => v / 3.28084 },
-      { id: 'weight',   label: 'Weight',      l: ['kg',   1],   r: ['lb'  ], toR: v => v * 2.20462,      toL: v => v / 2.20462 },
-      { id: 'temp',     label: 'Temperature', l: ['°C',  20],   r: ['°F'  ], toR: v => v * 9 / 5 + 32,   toL: v => (v - 32) * 5 / 9 },
-      { id: 'volume',   label: 'Volume',      l: ['L',    1],   r: ['gal' ], toR: v => v * 0.264172,     toL: v => v / 0.264172 },
-      { id: 'area',     label: 'Area',        l: ['m²',   1],   r: ['ft²' ], toR: v => v * 10.7639,      toL: v => v / 10.7639 },
-      { id: 'speed',    label: 'Speed',       l: ['km/h',100],  r: ['mph' ], toR: v => v * 0.621371,     toL: v => v / 0.621371 },
-      { id: 'energy',   label: 'Energy',      l: ['kcal',100],  r: ['kJ'  ], toR: v => v * 4.184,        toL: v => v / 4.184 },
-      { id: 'power',    label: 'Power',       l: ['W',  100],   r: ['hp'  ], toR: v => v / 745.7,        toL: v => v * 745.7 },
-      { id: 'pressure', label: 'Pressure',    l: ['bar',  1],   r: ['psi' ], toR: v => v * 14.5038,      toL: v => v / 14.5038 },
+    const categories = [
+      {
+        id: 'length', label: 'Length',
+        defaultLeft: 'm', defaultRight: 'ft', defaultValue: 1,
+        units: [
+          { symbol: 'm',  name: 'Meters',      toBase: v => v,            fromBase: v => v },
+          { symbol: 'km', name: 'Kilometers',   toBase: v => v * 1000,     fromBase: v => v / 1000 },
+          { symbol: 'cm', name: 'Centimeters',  toBase: v => v / 100,      fromBase: v => v * 100 },
+          { symbol: 'mm', name: 'Millimeters',  toBase: v => v / 1000,     fromBase: v => v * 1000 },
+          { symbol: 'ft', name: 'Feet',         toBase: v => v * 0.3048,   fromBase: v => v / 0.3048 },
+          { symbol: 'in', name: 'Inches',       toBase: v => v * 0.0254,   fromBase: v => v / 0.0254 },
+          { symbol: 'yd', name: 'Yards',        toBase: v => v * 0.9144,   fromBase: v => v / 0.9144 },
+          { symbol: 'mi', name: 'Miles',        toBase: v => v * 1609.344, fromBase: v => v / 1609.344 },
+        ]
+      },
+      {
+        id: 'weight', label: 'Weight',
+        defaultLeft: 'kg', defaultRight: 'lb', defaultValue: 1,
+        units: [
+          { symbol: 'kg', name: 'Kilograms',  toBase: v => v,              fromBase: v => v },
+          { symbol: 'g',  name: 'Grams',      toBase: v => v / 1000,       fromBase: v => v * 1000 },
+          { symbol: 'mg', name: 'Milligrams', toBase: v => v / 1e6,        fromBase: v => v * 1e6 },
+          { symbol: 'lb', name: 'Pounds',     toBase: v => v * 0.453592,   fromBase: v => v / 0.453592 },
+          { symbol: 'oz', name: 'Ounces',     toBase: v => v * 0.0283495,  fromBase: v => v / 0.0283495 },
+          { symbol: 'st', name: 'Stone',      toBase: v => v * 6.35029,    fromBase: v => v / 6.35029 },
+        ]
+      },
+      {
+        id: 'temp', label: 'Temperature',
+        defaultLeft: '\u00B0C', defaultRight: '\u00B0F', defaultValue: 20,
+        units: [
+          { symbol: '\u00B0C', name: 'Celsius',    toBase: v => v + 273.15,                fromBase: v => v - 273.15 },
+          { symbol: '\u00B0F', name: 'Fahrenheit', toBase: v => (v - 32) * 5 / 9 + 273.15, fromBase: v => (v - 273.15) * 9 / 5 + 32 },
+          { symbol: 'K',  name: 'Kelvin',          toBase: v => v,                          fromBase: v => v },
+        ]
+      },
+      {
+        id: 'volume', label: 'Volume',
+        defaultLeft: 'L', defaultRight: 'gal', defaultValue: 1,
+        units: [
+          { symbol: 'L',     name: 'Liters',        toBase: v => v,              fromBase: v => v },
+          { symbol: 'mL',    name: 'Milliliters',    toBase: v => v / 1000,       fromBase: v => v * 1000 },
+          { symbol: 'gal',   name: 'Gallons',        toBase: v => v * 3.78541,    fromBase: v => v / 3.78541 },
+          { symbol: 'qt',    name: 'Quarts',         toBase: v => v * 0.946353,   fromBase: v => v / 0.946353 },
+          { symbol: 'pt',    name: 'Pints',          toBase: v => v * 0.473176,   fromBase: v => v / 0.473176 },
+          { symbol: 'fl oz', name: 'Fluid Ounces',   toBase: v => v * 0.0295735,  fromBase: v => v / 0.0295735 },
+          { symbol: 'cup',   name: 'Cups',           toBase: v => v * 0.236588,   fromBase: v => v / 0.236588 },
+        ]
+      },
+      {
+        id: 'area', label: 'Area',
+        defaultLeft: 'm\u00B2', defaultRight: 'ft\u00B2', defaultValue: 1,
+        units: [
+          { symbol: 'm\u00B2',  name: 'Sq Meters',      toBase: v => v,              fromBase: v => v },
+          { symbol: 'km\u00B2', name: 'Sq Kilometers',   toBase: v => v * 1e6,        fromBase: v => v / 1e6 },
+          { symbol: 'cm\u00B2', name: 'Sq Centimeters',  toBase: v => v / 1e4,        fromBase: v => v * 1e4 },
+          { symbol: 'ft\u00B2', name: 'Sq Feet',         toBase: v => v * 0.092903,   fromBase: v => v / 0.092903 },
+          { symbol: 'in\u00B2', name: 'Sq Inches',       toBase: v => v * 0.00064516, fromBase: v => v / 0.00064516 },
+          { symbol: 'yd\u00B2', name: 'Sq Yards',        toBase: v => v * 0.836127,   fromBase: v => v / 0.836127 },
+          { symbol: 'ac',  name: 'Acres',           toBase: v => v * 4046.86,    fromBase: v => v / 4046.86 },
+          { symbol: 'ha',  name: 'Hectares',        toBase: v => v * 10000,      fromBase: v => v / 10000 },
+        ]
+      },
+      {
+        id: 'speed', label: 'Speed',
+        defaultLeft: 'km/h', defaultRight: 'mph', defaultValue: 100,
+        units: [
+          { symbol: 'km/h', name: 'km per hour',     toBase: v => v / 3.6,       fromBase: v => v * 3.6 },
+          { symbol: 'mph',  name: 'Miles per hour',   toBase: v => v * 0.44704,   fromBase: v => v / 0.44704 },
+          { symbol: 'm/s',  name: 'Meters per sec',   toBase: v => v,             fromBase: v => v },
+          { symbol: 'kn',   name: 'Knots',            toBase: v => v * 0.514444,  fromBase: v => v / 0.514444 },
+        ]
+      },
+      {
+        id: 'energy', label: 'Energy',
+        defaultLeft: 'kcal', defaultRight: 'kJ', defaultValue: 100,
+        units: [
+          { symbol: 'kcal', name: 'Kilocalories', toBase: v => v * 4184,    fromBase: v => v / 4184 },
+          { symbol: 'kJ',   name: 'Kilojoules',   toBase: v => v * 1000,    fromBase: v => v / 1000 },
+          { symbol: 'J',    name: 'Joules',        toBase: v => v,           fromBase: v => v },
+          { symbol: 'Wh',   name: 'Watt-hours',   toBase: v => v * 3600,    fromBase: v => v / 3600 },
+          { symbol: 'BTU',  name: 'BTU',           toBase: v => v * 1055.06, fromBase: v => v / 1055.06 },
+        ]
+      },
+      {
+        id: 'power', label: 'Power',
+        defaultLeft: 'W', defaultRight: 'hp', defaultValue: 100,
+        units: [
+          { symbol: 'W',     name: 'Watts',          toBase: v => v,            fromBase: v => v },
+          { symbol: 'kW',    name: 'Kilowatts',      toBase: v => v * 1000,     fromBase: v => v / 1000 },
+          { symbol: 'hp',    name: 'Horsepower',     toBase: v => v * 745.7,    fromBase: v => v / 745.7 },
+          { symbol: 'BTU/h', name: 'BTU per hour',   toBase: v => v * 0.293071, fromBase: v => v / 0.293071 },
+        ]
+      },
+      {
+        id: 'pressure', label: 'Pressure',
+        defaultLeft: 'bar', defaultRight: 'psi', defaultValue: 1,
+        units: [
+          { symbol: 'bar',  name: 'Bar',          toBase: v => v * 100000,  fromBase: v => v / 100000 },
+          { symbol: 'psi',  name: 'PSI',          toBase: v => v * 6894.76, fromBase: v => v / 6894.76 },
+          { symbol: 'atm',  name: 'Atmospheres',  toBase: v => v * 101325,  fromBase: v => v / 101325 },
+          { symbol: 'Pa',   name: 'Pascals',      toBase: v => v,           fromBase: v => v },
+          { symbol: 'kPa',  name: 'Kilopascals',  toBase: v => v * 1000,    fromBase: v => v / 1000 },
+          { symbol: 'mmHg', name: 'mmHg',         toBase: v => v * 133.322, fromBase: v => v / 133.322 },
+        ]
+      },
+      {
+        id: 'data', label: 'Data',
+        defaultLeft: 'GB', defaultRight: 'MB', defaultValue: 1,
+        units: [
+          { symbol: 'B',  name: 'Bytes',     toBase: v => v,                  fromBase: v => v },
+          { symbol: 'KB', name: 'Kilobytes', toBase: v => v * 1024,           fromBase: v => v / 1024 },
+          { symbol: 'MB', name: 'Megabytes', toBase: v => v * 1048576,        fromBase: v => v / 1048576 },
+          { symbol: 'GB', name: 'Gigabytes', toBase: v => v * 1073741824,     fromBase: v => v / 1073741824 },
+          { symbol: 'TB', name: 'Terabytes', toBase: v => v * 1099511627776,  fromBase: v => v / 1099511627776 },
+        ]
+      },
     ];
 
-    /* Data converter — units are cyclable (B → KB → MB → GB) */
-    const dataUnits = ['B', 'KB', 'MB', 'GB'];
-    const dataBytes = { B: 1, KB: 1024, MB: 1048576, GB: 1073741824 };
-    const dataState = { leftIdx: 3, rightIdx: 2 };  /* GB ⇄ MB */
+    /* ── Runtime state ── */
+
+    const state = {};
+    const lastEdited = {};
 
     /* ── Formatting: precise but clean ── */
 
@@ -299,86 +481,132 @@
 
     const grid = document.getElementById('grid');
 
-    /* Standard converters (1–9): side-by-side layout */
-    converters.forEach((c, i) => {
-      const rightVal = fmt(c.toR(c.l[1]));
+    categories.forEach((cat, i) => {
+      state[cat.id] = { left: cat.defaultLeft, right: cat.defaultRight };
+      lastEdited[cat.id] = 'left';
+
+      const leftUnit = cat.units.find(u => u.symbol === cat.defaultLeft);
+      const rightUnit = cat.units.find(u => u.symbol === cat.defaultRight);
+      const leftVal = cat.defaultValue;
+      const rightVal = fmt(rightUnit.fromBase(leftUnit.toBase(leftVal)));
+
       const tile = document.createElement('div');
       tile.className = 'tile';
       tile.style.animationDelay = `${i * 40}ms`;
       tile.setAttribute('role', 'group');
-      tile.setAttribute('aria-label', `${c.label} converter`);
+      tile.setAttribute('aria-label', `${cat.label} converter`);
       tile.innerHTML = `
-        <span class="cat">${c.label}</span>
+        <span class="cat">${cat.label}</span>
         <div class="pair">
           <div class="side">
             <input type="text" inputmode="decimal"
-                   data-id="${c.id}" data-side="left"
-                   value="${c.l[1]}" aria-label="${c.l[0]} value">
-            <span class="unit">${c.l[0]}</span>
+                   data-id="${cat.id}" data-side="left"
+                   value="${leftVal}" aria-label="${leftUnit.name} value">
+            <button class="unit-btn" data-id="${cat.id}" data-side="left"
+                    aria-haspopup="listbox" aria-expanded="false">${cat.defaultLeft}</button>
           </div>
           <span class="mid">\u21C4</span>
           <div class="side">
             <input type="text" inputmode="decimal"
-                   data-id="${c.id}" data-side="right"
-                   value="${rightVal}" aria-label="${c.r[0]} value">
-            <span class="unit">${c.r[0]}</span>
+                   data-id="${cat.id}" data-side="right"
+                   value="${rightVal}" aria-label="${rightUnit.name} value">
+            <button class="unit-btn" data-id="${cat.id}" data-side="right"
+                    aria-haspopup="listbox" aria-expanded="false">${cat.defaultRight}</button>
           </div>
         </div>`;
       grid.appendChild(tile);
     });
 
-    /* Data converter (10th tile, cyclable units) */
-    (function () {
-      const lUnit = dataUnits[dataState.leftIdx];
-      const rUnit = dataUnits[dataState.rightIdx];
-      const lVal  = 1;
-      const rVal  = fmt(lVal * dataBytes[lUnit] / dataBytes[rUnit]);
-
-      const tile = document.createElement('div');
-      tile.className = 'tile';
-      tile.style.animationDelay = `${9 * 40}ms`;
-      tile.setAttribute('role', 'group');
-      tile.setAttribute('aria-label', 'Data size converter');
-      tile.innerHTML = `
-        <span class="cat">Data</span>
-        <div class="pair">
-          <div class="side">
-            <input type="text" inputmode="decimal"
-                   data-id="data" data-side="left"
-                   value="${lVal}" aria-label="Data size value">
-            <span class="unit cyclable" data-side="left"
-                  role="button" tabindex="0"
-                  aria-label="Cycle unit, currently ${lUnit}">${lUnit}</span>
-          </div>
-          <span class="mid">\u21C4</span>
-          <div class="side">
-            <input type="text" inputmode="decimal"
-                   data-id="data" data-side="right"
-                   value="${rVal}" aria-label="Data size value">
-            <span class="unit cyclable" data-side="right"
-                  role="button" tabindex="0"
-                  aria-label="Cycle unit, currently ${rUnit}">${rUnit}</span>
-          </div>
-        </div>`;
-      grid.appendChild(tile);
-    })();
-
     /* ── Conversion engine ── */
 
     function convert(id, side, value) {
-      const otherSide = side === 'left' ? 'right' : 'left';
-      const target = grid.querySelector(
-        `input[data-id="${id}"][data-side="${otherSide}"]`
-      );
+      const cat = categories.find(c => c.id === id);
+      const fromUnit = cat.units.find(u => u.symbol === state[id][side]);
+      const toSide = side === 'left' ? 'right' : 'left';
+      const toUnit = cat.units.find(u => u.symbol === state[id][toSide]);
+      const result = toUnit.fromBase(fromUnit.toBase(value));
+      grid.querySelector(`input[data-id="${id}"][data-side="${toSide}"]`).value = fmt(result);
+    }
 
-      if (id === 'data') {
-        const from = dataUnits[dataState[side === 'left' ? 'leftIdx' : 'rightIdx']];
-        const to   = dataUnits[dataState[side === 'left' ? 'rightIdx' : 'leftIdx']];
-        target.value = fmt(value * dataBytes[from] / dataBytes[to]);
-      } else {
-        const c = converters.find(x => x.id === id);
-        target.value = fmt(side === 'left' ? c.toR(value) : c.toL(value));
+    /* ── Dropdown management ── */
+
+    let activeDropdown = null;
+
+    function openDropdown(button) {
+      closeDropdown();
+
+      const catId = button.dataset.id;
+      const side = button.dataset.side;
+      const cat = categories.find(c => c.id === catId);
+      const currentSymbol = state[catId][side];
+
+      const dropdown = document.createElement('div');
+      dropdown.className = 'unit-dropdown';
+      dropdown.setAttribute('role', 'listbox');
+
+      cat.units.forEach(u => {
+        const opt = document.createElement('div');
+        opt.className = 'unit-option';
+        opt.setAttribute('role', 'option');
+        opt.setAttribute('tabindex', '-1');
+        opt.setAttribute('aria-selected', u.symbol === currentSymbol ? 'true' : 'false');
+        opt.dataset.symbol = u.symbol;
+        opt.dataset.id = catId;
+        opt.dataset.side = side;
+        opt.innerHTML = `<span class="symbol">${u.symbol}</span><span class="name">${u.name}</span>`;
+        dropdown.appendChild(opt);
+      });
+
+      const sideEl = button.closest('.side');
+      sideEl.appendChild(dropdown);
+
+      /* Elevate tile so dropdown isn't clipped by adjacent tiles */
+      const tile = button.closest('.tile');
+      tile.style.zIndex = '10';
+
+      /* Open above if dropdown clips below viewport */
+      const rect = dropdown.getBoundingClientRect();
+      if (rect.bottom > window.innerHeight) {
+        dropdown.classList.add('above');
       }
+
+      button.setAttribute('aria-expanded', 'true');
+      activeDropdown = { dropdown, button, tile };
+
+      /* Focus selected option for keyboard users */
+      const selected = dropdown.querySelector('[aria-selected="true"]');
+      if (selected) selected.focus();
+    }
+
+    function closeDropdown() {
+      if (!activeDropdown) return;
+      activeDropdown.dropdown.remove();
+      activeDropdown.button.setAttribute('aria-expanded', 'false');
+      activeDropdown.tile.style.zIndex = '';
+      activeDropdown = null;
+    }
+
+    function selectUnit(catId, side, symbol) {
+      state[catId][side] = symbol;
+
+      /* Update button text */
+      const btn = grid.querySelector(`.unit-btn[data-id="${catId}"][data-side="${side}"]`);
+      btn.textContent = symbol;
+
+      /* Update aria-label on corresponding input */
+      const cat = categories.find(c => c.id === catId);
+      const unit = cat.units.find(u => u.symbol === symbol);
+      const input = grid.querySelector(`input[data-id="${catId}"][data-side="${side}"]`);
+      input.setAttribute('aria-label', `${unit.name} value`);
+
+      /* Re-convert using last-edited side as source of truth */
+      const sourceSide = lastEdited[catId];
+      const sourceInput = grid.querySelector(`input[data-id="${catId}"][data-side="${sourceSide}"]`);
+      const val = parseFloat(sourceInput.value);
+      if (!isNaN(val)) convert(catId, sourceSide, val);
+
+      closeDropdown();
+      btn.focus();
     }
 
     /* ── Event delegation ── */
@@ -386,17 +614,17 @@
     /* Real-time conversion on every keystroke */
     grid.addEventListener('input', (e) => {
       if (e.target.tagName !== 'INPUT') return;
+      const { id, side } = e.target.dataset;
+      lastEdited[id] = side;
       const raw = e.target.value.trim();
       if (raw === '' || raw === '-' || raw === '.') {
         grid.querySelector(
-          `input[data-id="${e.target.dataset.id}"][data-side="${
-            e.target.dataset.side === 'left' ? 'right' : 'left'
-          }"]`
+          `input[data-id="${id}"][data-side="${side === 'left' ? 'right' : 'left'}"]`
         ).value = '';
         return;
       }
       const val = parseFloat(raw);
-      if (!isNaN(val)) convert(e.target.dataset.id, e.target.dataset.side, val);
+      if (!isNaN(val)) convert(id, side, val);
     });
 
     /* Select all on focus for quick re-entry */
@@ -404,37 +632,81 @@
       if (e.target.tagName === 'INPUT') e.target.select();
     });
 
-    /* Data unit cycling — click */
+    /* Click: toggle dropdown or select option */
     grid.addEventListener('click', (e) => {
-      if (e.target.classList.contains('cyclable')) cycleUnit(e.target);
+      const opt = e.target.closest('.unit-option');
+      if (opt) {
+        selectUnit(opt.dataset.id, opt.dataset.side, opt.dataset.symbol);
+        return;
+      }
+
+      const btn = e.target.closest('.unit-btn');
+      if (btn) {
+        if (activeDropdown && activeDropdown.button === btn) {
+          closeDropdown();
+        } else {
+          openDropdown(btn);
+        }
+      }
     });
 
-    /* Data unit cycling — keyboard (Enter / Space) */
+    /* Close dropdown on outside click */
+    document.addEventListener('click', (e) => {
+      if (activeDropdown && !e.target.closest('.unit-dropdown') && !e.target.closest('.unit-btn')) {
+        closeDropdown();
+      }
+    });
+
+    /* Keyboard: open/close/navigate dropdowns */
     grid.addEventListener('keydown', (e) => {
-      if (e.target.classList.contains('cyclable') && (e.key === 'Enter' || e.key === ' ')) {
+      /* Open/close from unit button */
+      if (e.target.classList.contains('unit-btn') && (e.key === 'Enter' || e.key === ' ')) {
         e.preventDefault();
-        cycleUnit(e.target);
+        if (activeDropdown && activeDropdown.button === e.target) {
+          closeDropdown();
+        } else {
+          openDropdown(e.target);
+        }
+        return;
+      }
+
+      if (!activeDropdown) return;
+
+      /* Escape: close and return focus to button */
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        const btn = activeDropdown.button;
+        closeDropdown();
+        btn.focus();
+        return;
+      }
+
+      /* Tab: close and let focus proceed naturally */
+      if (e.key === 'Tab') {
+        closeDropdown();
+        return;
+      }
+
+      /* Arrow navigation within dropdown */
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const options = [...activeDropdown.dropdown.querySelectorAll('.unit-option')];
+        let idx = options.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') idx = idx < options.length - 1 ? idx + 1 : 0;
+        else idx = idx > 0 ? idx - 1 : options.length - 1;
+        options[idx].focus();
+        return;
+      }
+
+      /* Enter/Space: select focused option */
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (document.activeElement.classList.contains('unit-option')) {
+          const f = document.activeElement;
+          selectUnit(f.dataset.id, f.dataset.side, f.dataset.symbol);
+        }
       }
     });
-
-    function cycleUnit(el) {
-      const side   = el.dataset.side;
-      const key    = side === 'left' ? 'leftIdx' : 'rightIdx';
-      const oldIdx = dataState[key];
-      const oldUnit = dataUnits[oldIdx];
-
-      dataState[key] = (oldIdx + 1) % dataUnits.length;
-      const newUnit = dataUnits[dataState[key]];
-      el.textContent = newUnit;
-      el.setAttribute('aria-label', `Cycle unit, currently ${newUnit}`);
-
-      /* Re-express same quantity in new unit */
-      const input = grid.querySelector(`input[data-id="data"][data-side="${side}"]`);
-      const val = parseFloat(input.value);
-      if (!isNaN(val)) {
-        input.value = fmt(val * dataBytes[oldUnit] / dataBytes[newUnit]);
-      }
-    }
   </script>
 </body>
 </html>
