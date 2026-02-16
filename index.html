@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ZeroKnocks</title>
-  <meta name="description" content="A calm, precise unit conversion tool. Ten converters, zero friction.">
+  <meta name="description" content="A calm, precise unit conversion tool. Twelve converters, zero friction.">
   <meta property="og:title" content="ZeroKnocks">
   <meta property="og:description" content="A calm, precise unit conversion tool.">
   <meta property="og:type" content="website">
@@ -71,13 +71,13 @@
     }
 
 
-    /* ── Grid: 5 cols × 2 rows, hairline dividers ── */
+    /* ── Grid: 4 cols × 3 rows, hairline dividers ── */
 
     .grid {
       flex: 1;
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      grid-template-rows: repeat(2, 1fr);
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(3, 1fr);
       gap: 1px;
       background: var(--border);
       border-top: 1px solid var(--border);
@@ -262,6 +262,22 @@
     .unit-dropdown::-webkit-scrollbar-track { background: transparent; }
     .unit-dropdown::-webkit-scrollbar-thumb { background: var(--text-3); border-radius: 2px; }
 
+    /* ── Static unit label (non-interactive, for Electrical tile) ── */
+
+    .unit-label {
+      font-family: var(--sans);
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--text-2);
+      margin-top: 0.25rem;
+      user-select: none;
+    }
+
+    /* ── Trio layout (3 fields, for Electrical tile) ── */
+
+    .pair.trio { gap: 0.2rem; }
+    .pair.trio .mid { font-size: 0.65rem; padding-top: 0.15rem; }
+
     /* ── Midpoint separator (⇄) ── */
 
     .mid {
@@ -283,8 +299,8 @@
 
     /* ─────────────────────────────────
      * RESPONSIVE BREAKPOINTS
-     * ≥1280 → 5×2, no scroll
-     * ≥1024 → 5×2 tighter
+     * ≥1280 → 4×3, no scroll
+     * ≥1024 → 4×3 tighter
      * ≥768  → 3 columns
      * ≥480  → 2 columns
      * <480  → 1 column
@@ -460,6 +476,19 @@
           { symbol: 'TB', name: 'Terabytes', toBase: v => v * 1099511627776,  fromBase: v => v / 1099511627776 },
         ]
       },
+      {
+        id: 'time', label: 'Time',
+        defaultLeft: 'hr', defaultRight: 'min', defaultValue: 1,
+        units: [
+          { symbol: 's',   name: 'Seconds',  toBase: v => v,            fromBase: v => v },
+          { symbol: 'min', name: 'Minutes',  toBase: v => v * 60,       fromBase: v => v / 60 },
+          { symbol: 'hr',  name: 'Hours',    toBase: v => v * 3600,     fromBase: v => v / 3600 },
+          { symbol: 'day', name: 'Days',     toBase: v => v * 86400,    fromBase: v => v / 86400 },
+          { symbol: 'wk',  name: 'Weeks',    toBase: v => v * 604800,   fromBase: v => v / 604800 },
+          { symbol: 'mo',  name: 'Months',   toBase: v => v * 2592000,  fromBase: v => v / 2592000 },
+          { symbol: 'yr',  name: 'Years',    toBase: v => v * 31557600, fromBase: v => v / 31557600 },
+        ]
+      },
     ];
 
     /* ── Runtime state ── */
@@ -516,6 +545,70 @@
         </div>`;
       grid.appendChild(tile);
     });
+
+    /* Electrical tile (12th) — 3-field calculator: V × A = W */
+    (function () {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.style.animationDelay = `${categories.length * 40}ms`;
+      tile.setAttribute('role', 'group');
+      tile.setAttribute('aria-label', 'Electrical calculator');
+      tile.innerHTML = `
+        <span class="cat">Electrical</span>
+        <div class="pair trio">
+          <div class="side">
+            <input type="text" inputmode="decimal"
+                   data-id="electrical" data-field="v"
+                   value="120" aria-label="Volts value">
+            <span class="unit-label">V</span>
+          </div>
+          <span class="mid">\u00D7</span>
+          <div class="side">
+            <input type="text" inputmode="decimal"
+                   data-id="electrical" data-field="a"
+                   value="1" aria-label="Amps value">
+            <span class="unit-label">A</span>
+          </div>
+          <span class="mid">=</span>
+          <div class="side">
+            <input type="text" inputmode="decimal"
+                   data-id="electrical" data-field="w"
+                   value="120" aria-label="Watts value">
+            <span class="unit-label">W</span>
+          </div>
+        </div>`;
+      grid.appendChild(tile);
+    })();
+
+    /* ── Electrical calculator state ── */
+
+    const elecEdited = ['v', 'a'];
+
+    function trackElecField(field) {
+      const idx = elecEdited.indexOf(field);
+      if (idx === 0) {
+        [elecEdited[0], elecEdited[1]] = [elecEdited[1], elecEdited[0]];
+      } else if (idx === -1) {
+        elecEdited[0] = elecEdited[1];
+        elecEdited[1] = field;
+      }
+    }
+
+    function computeElectrical() {
+      const vIn = grid.querySelector('input[data-id="electrical"][data-field="v"]');
+      const aIn = grid.querySelector('input[data-id="electrical"][data-field="a"]');
+      const wIn = grid.querySelector('input[data-id="electrical"][data-field="w"]');
+      const v = parseFloat(vIn.value), a = parseFloat(aIn.value), w = parseFloat(wIn.value);
+      const toCompute = ['v', 'a', 'w'].find(f => !elecEdited.includes(f));
+
+      if (toCompute === 'w' && !isNaN(v) && !isNaN(a)) {
+        wIn.value = fmt(v * a);
+      } else if (toCompute === 'v' && !isNaN(w) && !isNaN(a) && a !== 0) {
+        vIn.value = fmt(w / a);
+      } else if (toCompute === 'a' && !isNaN(w) && !isNaN(v) && v !== 0) {
+        aIn.value = fmt(w / v);
+      }
+    }
 
     /* ── Conversion engine ── */
 
@@ -614,7 +707,22 @@
     /* Real-time conversion on every keystroke */
     grid.addEventListener('input', (e) => {
       if (e.target.tagName !== 'INPUT') return;
-      const { id, side } = e.target.dataset;
+      const { id, side, field } = e.target.dataset;
+
+      /* Electrical calculator */
+      if (id === 'electrical') {
+        trackElecField(field);
+        const raw = e.target.value.trim();
+        if (raw === '' || raw === '-' || raw === '.') {
+          const toCompute = ['v', 'a', 'w'].find(f => !elecEdited.includes(f));
+          grid.querySelector(`input[data-id="electrical"][data-field="${toCompute}"]`).value = '';
+          return;
+        }
+        computeElectrical();
+        return;
+      }
+
+      /* Standard converter */
       lastEdited[id] = side;
       const raw = e.target.value.trim();
       if (raw === '' || raw === '-' || raw === '.') {
