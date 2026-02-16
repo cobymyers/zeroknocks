@@ -11,7 +11,10 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%2309090b%22 width=%22100%22 height=%22100%22 rx=%2218%22/><text x=%2250%22 y=%2272%22 text-anchor=%22middle%22 fill=%22%23b8975f%22 font-size=%2258%22 font-family=%22monospace%22 font-weight=%22bold%22>0</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"></noscript>
+  <meta property="og:image" content="/og-image.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"ZeroKnocks","description":"A calm, precise unit conversion tool. Twelve converters, zero friction.","applicationCategory":"Utilities"}</script>
 
   <script>(function(){var t=localStorage.getItem('theme');document.documentElement.setAttribute('data-theme',t||'dark')})()</script>
 
@@ -394,7 +397,7 @@
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme"></button>
   </header>
 
-  <main class="grid" id="grid" role="main"></main>
+  <main class="grid" id="grid"></main>
 
   <noscript><p>JavaScript is required to use ZeroKnocks.</p></noscript>
 
@@ -544,6 +547,7 @@
     /* ── Formatting: precise but clean ── */
 
     function fmt(n) {
+      if (!Number.isFinite(n)) return '';
       if (n === 0) return '0';
       const a = Math.abs(n);
       if (a >= 100000) return parseFloat(n.toPrecision(6)).toString();
@@ -554,6 +558,7 @@
     /* ── Build tiles ── */
 
     const grid = document.getElementById('grid');
+    const TILE_ANIMATION_STAGGER_MS = 40;
 
     categories.forEach((cat, i) => {
       state[cat.id] = { left: cat.defaultLeft, right: cat.defaultRight };
@@ -566,7 +571,7 @@
 
       const tile = document.createElement('div');
       tile.className = 'tile';
-      tile.style.animationDelay = `${i * 40}ms`;
+      tile.style.animationDelay = `${i * TILE_ANIMATION_STAGGER_MS}ms`;
       tile.setAttribute('role', 'group');
       tile.setAttribute('aria-label', `${cat.label} converter`);
       tile.innerHTML = `
@@ -595,7 +600,7 @@
     (function () {
       const tile = document.createElement('div');
       tile.className = 'tile';
-      tile.style.animationDelay = `${categories.length * 40}ms`;
+      tile.style.animationDelay = `${categories.length * TILE_ANIMATION_STAGGER_MS}ms`;
       tile.setAttribute('role', 'group');
       tile.setAttribute('aria-label', 'Electrical calculator');
       tile.innerHTML = `
@@ -652,6 +657,8 @@
         vIn.value = fmt(w / a);
       } else if (toCompute === 'a' && !isNaN(w) && !isNaN(v) && v !== 0) {
         aIn.value = fmt(w / v);
+      } else {
+        wIn.value = '';
       }
     }
 
@@ -847,6 +854,7 @@
         let idx = options.indexOf(document.activeElement);
         if (e.key === 'ArrowDown') idx = idx < options.length - 1 ? idx + 1 : 0;
         else idx = idx > 0 ? idx - 1 : options.length - 1;
+        options.forEach((opt, i) => opt.setAttribute('aria-selected', i === idx ? 'true' : 'false'));
         options[idx].focus();
         return;
       }
